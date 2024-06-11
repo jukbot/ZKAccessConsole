@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34928.147
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZKAccessConsole", "ZKAccessConsole.csproj", "{970BF7EC-2054-4CC0-93DB-47FFCDF8F8C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "..\Test\Test.csproj", "{8E748E83-16A0-4E65-89A0-403C52DE7E1D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{970BF7EC-2054-4CC0-93DB-47FFCDF8F8C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{970BF7EC-2054-4CC0-93DB-47FFCDF8F8C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{970BF7EC-2054-4CC0-93DB-47FFCDF8F8C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{970BF7EC-2054-4CC0-93DB-47FFCDF8F8C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E748E83-16A0-4E65-89A0-403C52DE7E1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E748E83-16A0-4E65-89A0-403C52DE7E1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E748E83-16A0-4E65-89A0-403C52DE7E1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E748E83-16A0-4E65-89A0-403C52DE7E1D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EBF80BEA-EE6B-4DF8-B369-AA30AAE3D220}
+	EndGlobalSection
+EndGlobal

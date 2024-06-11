@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<Configurations>Release;Debug</Configurations>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <PlatformTarget>x86</PlatformTarget>
+    <StartupObject>Program</StartupObject>
+    <ApplicationIcon>door_icon_144373.ico</ApplicationIcon>
+    <Copyright>FitUP Sport Technology</Copyright>
+    <PackageIcon>door_icon_144373.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="door_icon_144373.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\Downloads\door_icon_144373.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Windows.Extensions" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <Reference Include="PullSDK.dll" />
+  </ItemGroup>
+
+</Project>

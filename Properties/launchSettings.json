@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ZKAccessConsole": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
