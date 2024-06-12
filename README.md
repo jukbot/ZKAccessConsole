@@ -19,6 +19,7 @@ This access console is implemented using SDK wrapper from https://github.com/Mua
 - [ ] Change device password
 - [ ] View connected doors
 - [ ] Edit doors
+- [x] Set device timezone (hardcode)
 - [ ] View device status
 - [ ] View device settings
 - [x] View device events
