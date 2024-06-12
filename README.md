@@ -17,6 +17,8 @@ This access console is implemented using SDK wrapper from https://github.com/Mua
 - [ ] Search users
 - [ ] Backup/Restore database
 - [ ] Change device password
+- [ ] View connected doors
+- [ ] Edit doors
 - [ ] View device status
 - [ ] View device settings
 - [x] View device events
