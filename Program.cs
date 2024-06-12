@@ -240,6 +240,7 @@ class Program
 
     static void PrintRealtimeLog(AccessPanel device)
     {
+        Console.Clear();
         Program.isRunning = true;
         PrintInProgress("Reading real-time logs... (press 'q' to exit)");
         while (Program.isRunning)
@@ -250,7 +251,7 @@ class Program
                 if (key.Key == ConsoleKey.Q)
                 {
                     Program.isRunning = false;
-                    Welcome(device);
+                    ResetConsole(device);
                     return;
                 }
             }
@@ -271,10 +272,20 @@ class Program
                     Console.WriteLine($"User card no {eventLog.Card} with pin {eventLog.Pin} accessed door no {eventLog.Door} at {eventLog.Time}");
                     Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
                 }
-                else if (eventLog.EventType != 20)
+                else if (eventLog.EventType == 27)
                 {
                     Console.ForegroundColor = ConsoleColor.DarkRed;
                     Console.WriteLine($"User card no {eventLog.Card} with pin {eventLog.Pin} try to access door no {eventLog.Door} at {eventLog.Time}");
+                    Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
+                }
+                else if (eventLog.EventType == 8)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
+                }
+                else if (eventLog.EventType != 20)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
                     Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
                 }
             }
