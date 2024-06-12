@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Media;
+﻿using System.Media;
 using System.Runtime.InteropServices;
 using PullSDK_core;
 class Program
@@ -12,68 +11,79 @@ class Program
     static Dictionary<int, int[]> allowedDoors = new Dictionary<int, int[]>
     {
         { 1, new[] { 1, 2 } },
-        { 2, new[] { 1, 2, 3, 4 } },
-        { 3, new[] { 1, 2, 3, 4, 5 } }
+        { 2, new[] { 1, 2, 3 } },
+        { 3, new[] { 1, 2, 3, 4 } }
     };
 
+    static bool isRunning = true;
+    static string connectionStr = $"protocol=RS485,port=COM4,baudrate=38400bps,deviceid=1,timeout=5000,passwd={null}";
+    // static string connectionStr = $"protocol=TCP,port=4370,ipaddress=192.168.1.201,timeout=5000,passwd={null}";
     static void Main(string[] args)
     {
-        string connectionStr = $"protocol=RS485,port=COM4,baudrate=38400bps,deviceid=1,timeout=50000,passwd={null}";
-        Debug.WriteLine("Starting connection to device...");
-        Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine($"Starting connection to {connectionStr}");
+        PrintInProgress($"Start connecting to {connectionStr}");
         AccessPanel device = new AccessPanel();
-        // string parameters = $"protocol=TCP,ipaddress={ip},port={port},timeout={timeout},passwd={(key == 0 ? "" : key.ToString())}";
 
         bool deviceStatus = device.ConnectDevice(connectionStr);
+        Console.Clear();
         if (!deviceStatus)
         {
             Console.WriteLine("\a");
             Console.ForegroundColor = ConsoleColor.Red;
             PrintErrorCode(device, "Failed to connect to device");
-            return;
         }
 
-        SystemSounds.Beep.Play();
         PrintSuccess("Connected to device successfully.");
-        Console.SetError(Console.Out);
-        Console.BackgroundColor = ConsoleColor.Magenta;
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("Welcome to better ZkAccessConsole.\n");
-        Console.ResetColor();
+        SystemSounds.Exclamation.Play();
+
+        CheckIsConnected(device);
+
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine($"Connected: {device.IsConnected()}");
+        Console.WriteLine($"Type: {device.GetType().ToString()}");
+        Console.WriteLine($"Firmware version: {device.DetectedFirmwareVersion}");
+        Console.WriteLine($"Connected doors: {device.GetDoorCount()}");
+        Console.WriteLine($"Serial: {device.GetSerialNumber()}");
+        Console.WriteLine("-----------------------------------------------------\n");
+        SetTimezone(device);
         Welcome(device);
 
-        //while (true)
-        //{
-        //    // Read real-time logs
-        //    var eventLog = device.GetEventLog();
-        //    if (eventLog != null)
-        //    {
-        //        Console.WriteLine("Doors Status: " + eventLog.DoorsStatus);
-        //        foreach (var e in eventLog.Events)
-        //        {
-        //            Console.WriteLine("Event: " + e);
-        //        }
-        //    }
-        //    System.Threading.Thread.Sleep(1000); // Adjust the interval as needed
-        //}
+        Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true; // prevent the program from exiting immediately
+            Program.isRunning = false;
+        };
     }
 
+    static void CheckIsConnected(AccessPanel device)
+    {
+        if (!device.IsConnected() || device.GetDoorCount() == -1)
+        {
+            PrintErrorCode(device, "Device is not connect");
+            return;
+        }
+    }
     static void Welcome(AccessPanel device)
     {
+        CheckIsConnected(device);
         Console.ResetColor();
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Please enter a command to continue:");
+        Console.BackgroundColor = ConsoleColor.Magenta;
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine("Welcome to better ZkAccess Console v1.0");
+        Console.ResetColor();
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("\nPlease enter a command to continue:");
         Console.WriteLine("-----------------------------------------------------");
-        Console.WriteLine("user - print all users\n" +
-                        "event - read events\n" +
+        Console.WriteLine("user - get all users\n" +
                         "open - open door\n" +
                         "close - close door\n" +
                         "add - add new user\n" +
                         "del - delete user\n" +
-                        "log - read real-time logs\n" +
-                        "clear - clear console\n" +
+                        "door - get user doors\n" +
+                        "set - set user access\n" +
+                        "event - read event log\n" +
+                        "log - read realtime logs\n" +
                         "reboot - reboot device\n" +
+                        "clear - clear console\n" +
                         "quit - quit program");
         Console.WriteLine("-----------------------------------------------------");
         Console.ForegroundColor = ConsoleColor.White;
@@ -84,7 +94,7 @@ class Program
             switch (key)
             {
                 case "user":
-                    PrintAllUsers(device);
+                    PrintUsers(device);
                     break;
                 case "open":
                     OpenDoor(device);
@@ -92,20 +102,32 @@ class Program
                 case "close":
                     CloseDoor(device);
                     break;
+                case "add":
+                    AddUser(device);
+                    break;
+                case "del":
+                    DeleteUser(device);
+                    break;
+                case "set":
+                    SetUserAccess(device);
+                    break;
+                case "door":
+                    PrintUserDoor(device);
+                    break;
+                case "event":
+                    PrintEventLog(device);
+                    break;
+                case "log":
+                    PrintRealtimeLog(device);
+                    break;
                 case "reboot":
                     RebootDevice(device);
                     break;
                 case "clear":
                     ResetConsole(device);
                     break;
-                case "reset":
-                    ResetConsole(device);
-                    break;
-                case "add":
-                    AddUser(device);
-                    break;
-                case "del":
-                    DeleteUser(device);
+                case "exit":
+                    QuitProgram(device);
                     break;
                 case "quit":
                     QuitProgram(device);
@@ -113,12 +135,30 @@ class Program
                 default:
                     Console.WriteLine("\a");
                     Console.Clear();
-                    Console.WriteLine("Invalid command.");
+                    PrintError("Invalid command.");
                     Welcome(device);
                     break;
             }
         }
 
+    }
+
+    static void SetTimezone(AccessPanel device)
+    {
+        int[] defaultTZ = new int[] {
+            2359, 0, 0, // Friday is the first day because i said so to spite you
+            2359, 0, 0,
+            2359, 0, 0,
+            2359, 0, 0,
+            2359, 0, 0,
+            2359, 0, 0,
+            2359, 0, 0
+        };
+        if (!device.WriteTimezone(1, defaultTZ))
+        {
+            PrintErrorCode(device, "Failed to set timezone");
+            return; // Why won't you work you P.O.S?
+        }
     }
 
     static void ResetConsole(AccessPanel device)
@@ -130,28 +170,133 @@ class Program
 
     static void RebootDevice(AccessPanel device)
     {
-        Console.WriteLine("Rebooting device...");
-        bool result = device.Reboot();
-        if (result)
+        PrintInProgress("Rebooting device...");
+        device.Reboot();
+        PrintSuccess("Device rebooted successfully.");
+        ReconnectDevice(device);
+    }
+
+    static void ReconnectDevice(AccessPanel device)
+    {
+        PrintInProgress($"Starting connection to {connectionStr}");
+        device.ConnectDevice(connectionStr);
+        PrintSuccess("Connected to device successfully.");
+        Beep(500, 500);
+        ResetConsole(device);
+    }
+
+    static void PrintUserDoor(AccessPanel device)
+    {
+        Console.Clear();
+        Console.WriteLine("Enter user pin to get allowed doors:");
+        int pinNumber;
+        string pinInput = Console.ReadLine();
+        if (!int.TryParse(pinInput, out pinNumber) || pinInput.Length > 10 || string.IsNullOrWhiteSpace(pinInput))
         {
-            PrintSuccess("Device rebooted successfully.");
-            Beep(500, 500);
+            Console.Clear();
+            PrintError("Invalid pin number. Please input a number with max 10 digits.");
+            SetUserAccess(device);
         }
-        else
+        else if (pinNumber < 0)
         {
-            PrintErrorCode(device, "Failed to reboot device.");
+            Console.Clear();
+            PrintError("Pin number cannot be negative. Please enter a number with max 10 digits.");
+            SetUserAccess(device);
         }
+        // -----------------------------------------------------------------------------------------
+        PrintInProgress("Reading user doors...");
+        int doors = device.ReadDoors(pinInput, 1);
+
+        if (doors < 0)
+        {
+            PrintErrorCode(device, "Cannot get user doors");
+        }
+
+        Console.WriteLine($"User pin {pinInput} has access to doors: {doors}");
         FinishProgram(device);
     }
 
-    static void PrintAllUsers(AccessPanel device)
+    static void PrintEventLog(AccessPanel device)
+    {
+        PrintInProgress("Reading events...");
+        var events = device.GetEventLog();
+        if (events == null)
+        {
+            PrintErrorCode(device, "Failed to read events");
+            FinishProgram(device);
+        }
+
+        if (events.Events.Length == 0)
+        {
+            Console.WriteLine("No events found.");
+            FinishProgram(device);
+        }
+        else
+        {
+            Console.WriteLine($"Last event: {events.Events[events.Events.Length - 1]}");
+            FinishProgram(device);
+        }
+    }
+
+    static void PrintRealtimeLog(AccessPanel device)
+    {
+        Program.isRunning = true;
+        PrintInProgress("Reading real-time logs... (press 'q' to exit)");
+        while (Program.isRunning)
+        {
+            if (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(true);
+                if (key.Key == ConsoleKey.Q)
+                {
+                    Program.isRunning = false;
+                    Welcome(device);
+                    return;
+                }
+            }
+
+            var e = device.GetEventLog();
+            if (e == null)
+            {
+                PrintErrorCode(device, "Failed to read real-time logs");
+                FinishProgram(device);
+                return;
+            }
+
+            foreach (var eventLog in e.Events)
+            {
+                if (eventLog.EventType == 0)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"User card no {eventLog.Card} with pin {eventLog.Pin} accessed door no {eventLog.Door} at {eventLog.Time}");
+                    Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
+                }
+                else if (eventLog.EventType != 20)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.WriteLine($"User card no {eventLog.Card} with pin {eventLog.Pin} try to access door no {eventLog.Door} at {eventLog.Time}");
+                    Console.WriteLine($"Event type: {eventLog.EventType} - {eventLog.ToString()}\n");
+                }
+            }
+
+            System.Threading.Thread.Sleep(1000);  // Wait for a short time before getting the next log
+        }
+    }
+
+    static void PrintUsers(AccessPanel device)
     {
         PrintInProgress("Reading users...");
         List<PullSDK_core.User> users = device.ReadUsers();
         if (users == null)
         {
             PrintErrorCode(device, "Failed to read users");
+            FinishProgram(device);
             return;
+        }
+
+        if (users.Count == 0)
+        {
+            Console.WriteLine("No users found.");
         }
 
         foreach (var user in users)
@@ -164,95 +309,136 @@ class Program
 
     static void OpenDoor(AccessPanel device)
     {
-        Console.WriteLine("Enter the door number to open (1-5):");
+        Console.WriteLine("Enter the door number to open (1-4):");
         string input = Console.ReadLine();
         int doorNumber;
 
-        if (int.TryParse(input, out doorNumber) && doorNumber >= 1 && doorNumber <= 5)
+        if (int.TryParse(input, out doorNumber) && doorNumber >= 1 && doorNumber <= 4)
         {
+            PrintInProgress($"Opening door {doorNumber}...");
             device.OpenDoor(doorNumber, 5); // Open the specified door for 5 seconds
             PrintSuccess($"Door {doorNumber} opened.");
             FinishProgram(device);
         }
         else
         {
-            Console.WriteLine("Invalid door number. Please enter a number between 1 and 5.");
-            OpenDoor(device);
+            PrintError("Invalid door number. Please enter a number between 1 and 4.");
+            FinishProgram(device);
         }
     }
 
     static void CloseDoor(AccessPanel device)
     {
-        Console.WriteLine("Enter the door number to close (1-5):");
+        Console.WriteLine("Enter the door number to close (1-4):");
         string input = Console.ReadLine();
         int doorNumber;
 
-        if (int.TryParse(input, out doorNumber) && doorNumber >= 1 && doorNumber <= 5)
+        if (int.TryParse(input, out doorNumber) && doorNumber >= 1 && doorNumber <= 4)
         {
+            PrintInProgress($"Closing door {doorNumber}...");
             device.CloseDoor(doorNumber);
             PrintSuccess($"Door {doorNumber} closed.");
             FinishProgram(device);
         }
         else
         {
-            Console.WriteLine("Invalid door number. Please enter a number between 1 and 5.");
+            PrintError("Invalid door number. Please enter a number between 1 and 4.");
             CloseDoor(device);
         }
     }
 
     static void AddUser(AccessPanel device)
     {
-        Console.WriteLine("Enter the user's name (max 30 characters):");
-        string name = Console.ReadLine();
-        if (name.Length > 30)
+        // -----------------------------------------------------------------------------------------
+        Console.Clear();
+        string name;
+        do
         {
-            Console.WriteLine("Name is too long. Please enter a name with max 30 characters.");
-            return;
-        }
+            Console.WriteLine("Enter user's name (max 30 characters):");
+            name = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 30)
+            {
+                Console.Clear();
+                PrintError("Invalid input. Please enter a name with max 30 characters and it must not be empty.");
+            }
+        } while (string.IsNullOrWhiteSpace(name) || name.Length > 30);
 
-        Console.WriteLine("Enter the group number (1 for member, 2 for staff, 3 for admin):");
+        // -----------------------------------------------------------------------------------------
+        Console.Clear();
+        Console.WriteLine("Enter a group number:\n1 - member\n2 - staff\n3 - admin\nLeave blank to set same as admin");
         string groupInput = Console.ReadLine();
         int groupNumber;
 
-        if (!int.TryParse(groupInput, out groupNumber) || groupNumber < 1 || groupNumber > 3)
+        if (string.IsNullOrWhiteSpace(groupInput))
         {
-            Console.WriteLine("Invalid group number. Please enter a number between 1 and 3.");
-            return;
+            groupNumber = 3;
+        }
+        else if (!int.TryParse(groupInput, out groupNumber) || groupNumber < 1 || groupNumber > 3)
+        {
+            Console.Clear();
+            PrintError("Invalid group number. Please enter a number between 1 and 3.");
         }
 
-        Console.WriteLine("Enter the pin number (max 10 digits):");
-        string pinInput = Console.ReadLine();
+        // -----------------------------------------------------------------------------------------
+        Console.Clear();
         int pinNumber;
-        if (!int.TryParse(pinInput, out pinNumber) || pinInput.Length > 10)
+        string pinInput;
+        do
         {
-            Console.WriteLine("Invalid pin number. Please enter a number with max 10 digits.");
-            return;
-        }
+            Console.WriteLine("Enter a pin number (max 10 digits):");
+            pinInput = Console.ReadLine();
+            if (!int.TryParse(pinInput, out pinNumber) || pinInput.Length > 10 || string.IsNullOrWhiteSpace(pinInput))
+            {
+                Console.Clear();
+                PrintError("Invalid pin number. Please input a number with max 10 digits.");
+            }
+            else if (pinNumber < 0)
+            {
+                Console.Clear();
+                PrintError("Pin number cannot be negative. Please enter a number with max 10 digits.");
+            }
+        } while (!int.TryParse(pinInput, out pinNumber) || pinInput.Length > 10 || string.IsNullOrWhiteSpace(pinInput) || pinNumber < 0);
 
-        Console.WriteLine("Enter the card number:");
-        string cardNumber = Console.ReadLine();
+        // -----------------------------------------------------------------------------------------
+        Console.Clear();
+        string cardNumber;
+        do
+        {
+            Console.WriteLine("Enter a card number (Support only alphanumeric):");
+            cardNumber = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(cardNumber) || cardNumber.Length > 30 || !IsAlphanumeric(cardNumber))
+            {
+                Console.Clear();
+                PrintError("Invalid input. Please enter a card number with max 30 alphanumeric characters and it must not be empty.");
+            }
+        } while (string.IsNullOrWhiteSpace(cardNumber) || cardNumber.Length > 30 || !IsAlphanumeric(cardNumber));
 
-        Console.WriteLine("The following user will be add to access control");
+        // -----------------------------------------------------------------------------------------
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("The following user data will be add to access control");
         Console.WriteLine("---------------------------------------------------");
         Console.WriteLine($"Name: {name}");
         Console.WriteLine($"Group ID: {groupNumber}");
         Console.WriteLine($"Pin: {pinNumber}");
         Console.WriteLine($"Card Number: {cardNumber}");
         Console.WriteLine($"Allowed Doors: {string.Join(", ", allowedDoors[groupNumber])}");
-        Console.WriteLine("---------------------------------------------------\n");
-        Console.WriteLine("1 - continue add user\n2 - reset and start over\n3 - cancel");
+        Console.WriteLine("---------------------------------------------------");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("Are you sure that it is correct?");
+        Console.WriteLine("1 - confirm\n2 - start over\n3 - cancel");
+        Console.ResetColor();
         string confirmInput = Console.ReadLine();
         switch (confirmInput)
         {
             case "1":
                 string today = DateTime.Today.ToString("yyyyMMdd");
                 string endDate = DateTime.Today.AddYears(20).ToString("yyyyMMdd");
-                // Add user
                 PullSDK_core.User u = new PullSDK_core.User(pinNumber.ToString(), name, cardNumber, null, today, endDate, allowedDoors[groupNumber]);
-                Console.WriteLine(u.ToString());
-
+                PrintInProgress("Adding user...");
                 if (device.WriteUser(u))
                 {
+                    Console.Clear();
+                    Console.WriteLine(u.ToString());
                     PrintSuccess("User added successfully.");
                     FinishProgram(device);
                 }
@@ -277,6 +463,7 @@ class Program
 
     static void DeleteUser(AccessPanel device)
     {
+        Console.Clear();
         Console.WriteLine("1 - delete user by card no\n2 - to delete everythings\n3 - cancel");
         string confirmInput = Console.ReadLine();
         switch (confirmInput)
@@ -287,79 +474,134 @@ class Program
                 if (string.IsNullOrEmpty(cardNumber))
                 {
                     PrintError("Invalid card number.");
-                    return;
+                    DeleteUser(device);
                 }
+                PrintInProgress("Deleting user...");
                 device.DeleteUserByCard(cardNumber);
                 PrintSuccess("User deleted successfully.");
                 FinishProgram(device);
                 break;
             case "2":
+                PrintInProgress("Deleting all users...");
                 device.DeleteAllDataFromDevice();
                 PrintSuccess("All users deleted successfully.");
                 FinishProgram(device);
                 break;
             case "3":
                 ResetConsole(device);
-                Welcome(device);
                 break;
             default:
                 PrintError("Invalid command.");
+                DeleteUser(device);
                 break;
         }
     }
 
+    static void SetUserAccess(AccessPanel device)
+    {
+        Console.Clear();
+        Console.WriteLine("Enter user pin to set access:");
+        int pinNumber;
+        string pinInput = Console.ReadLine();
+        if (!int.TryParse(pinInput, out pinNumber) || pinInput.Length > 10 || string.IsNullOrWhiteSpace(pinInput))
+        {
+            Console.Clear();
+            PrintError("Invalid pin number. Please input a number with max 10 digits.");
+            SetUserAccess(device);
+        }
+        else if (pinNumber < 0)
+        {
+            Console.Clear();
+            PrintError("Pin number cannot be negative. Please enter a number with max 10 digits.");
+            SetUserAccess(device);
+        }
+        // -----------------------------------------------------------------------------------------
+        Console.Clear();
+        int groupNumber;
+        do
+        {
+            Console.WriteLine("Enter a group number:\n1 - member\n2 - staff\n3 - admin\nLeave blank to set same as admin");
+            string groupInput = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(groupInput))
+            {
+                groupNumber = 3;
+                break;
+            }
+            else if (!int.TryParse(groupInput, out groupNumber) || groupNumber < 1 || groupNumber > 3)
+            {
+                Console.Clear();
+                PrintError("Invalid group number. Please enter a number between 1 and 3.");
+            }
+            else
+            {
+                break;
+            }
+        } while (true);
+
+        // -----------------------------------------------------------------------------------------
+        PrintInProgress("Setting door access...");
+        device.SetUserDoors(pinInput, 1, allowedDoors[groupNumber]);
+        PrintSuccess("User access set successfully.");
+        FinishProgram(device);
+    }
+
     static void QuitProgram(AccessPanel device)
     {
+        PrintInProgress("Disconnecting from device...");
         device.Disconnect();
-        Console.WriteLine("Disconnected from device.");
-        Console.WriteLine("Quitting program...");
+        PrintInProgress("Goodbye!");
         Environment.Exit(0);
-        return;
     }
 
     static void PrintErrorCode(AccessPanel device, string msg)
     {
         int error = device.GetLastError();
         Console.WriteLine("\a");
-        PrintError($"{msg}, Error code: " + error);
+        PrintError($"{msg}, Error code: " + error.ToString());
         PrintError(device.GetLastDataErrorTable());
     }
 
     static void PrintInProgress(string msg)
     {
         Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine($"{msg}\n");
+        Console.WriteLine($"{msg}");
         Console.ResetColor();
     }
 
     static void PrintSuccess(string msg)
     {
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"{msg}\n");
+        Console.WriteLine($"{msg}");
         Console.ResetColor();
     }
 
     static void PrintError(string msg)
     {
         Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"{msg}\n");
+        Console.WriteLine($"{msg}");
         Console.ResetColor();
     }
 
     static void FinishProgram(AccessPanel device)
     {
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("\nPress any key to continue...\n\n");
+        Console.WriteLine("------------------------------------------\nPress any key to continue...");
         Console.ResetColor();
         Console.ReadKey();
         ResetConsole(device);
     }
 
-    static bool IsAuthorized(string cardNo)
+    private static bool IsAlphanumeric(string str)
     {
-        // Implement your authorization logic here
-        // For example, check against a list of authorized card numbers
-        return cardNo == "authorized_card_number"; // Replace with actual logic
+        for (int i = 0; i < str.Length; i++)
+        {
+            if (!char.IsLetterOrDigit(str[i]))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
